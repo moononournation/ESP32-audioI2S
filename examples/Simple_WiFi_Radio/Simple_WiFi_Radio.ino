@@ -2,12 +2,13 @@
 #include <Preferences.h>
 #include <SPI.h>
 #include <WiFi.h>
-#include "tft.h"   //see my repository at github "https://github.com/schreibfaul1/ESP32-TFT-Library-ILI9486"
+#include "ili9486.h"   //see my repository at github "https://github.com/schreibfaul1/ESP32-TFT-Library-ILI9486"
 #include "Audio.h" //see my repository at github "https://github.com/schreibfaul1/ESP32-audioI2S"
 
 #define TFT_CS        22
 #define TFT_DC        21
-#define TP_CS         14 //16
+#define TP_CS          5
+#define TFT_BL        12
 #define TP_IRQ        39
 #define SPI_MOSI      23
 #define SPI_MISO      19
@@ -21,18 +22,18 @@ TFT tft;
 TP tp(TP_CS, TP_IRQ);
 Audio audio;
 
-String ssid =     "*****";
-String password = "*****";
+String ssid =     "Wolles-FRITZBOX";
+String password = "40441061073895958449";
 
 String stations[] ={
-        "0n-80s.radionetz.de:8000/0n-70s.mp3",
-        "mediaserv30.live-streams.nl:8000/stream",
-        "www.surfmusic.de/m3u/100-5-das-hitradio,4529.m3u",
-        "stream.1a-webradio.de/deutsch/mp3-128/vtuner-1a",
-        "mp3.ffh.de/radioffh/hqlivestream.aac", //  128k aac
-        "www.antenne.de/webradio/antenne.m3u",
-        "listen.rusongs.ru/ru-mp3-128",
-        "edge.audio.3qsdn.com/senderkw-mp3",
+        "http://0n-80s.radionetz.de:8000/0n-70s.mp3",
+        "http://mediaserv30.live-streams.nl:8000/stream",
+        "http://www.surfmusic.de/m3u/100-5-das-hitradio,4529.m3u",
+        "http://stream.1a-webradio.de/deutsch/mp3-128/vtuner-1a",
+        "http://mp3.ffh.de/radioffh/hqlivestream.aac", //  128k aac
+        "http://www.antenne.de/webradio/antenne.m3u",
+        "http://listen.rusongs.ru/ru-mp3-128",
+        "http://edge.audio.3qsdn.com/senderkw-mp3",
         "https://stream.srg-ssr.ch/rsp/aacp_48.asx", // SWISS POP
 };
 
@@ -58,6 +59,12 @@ struct _btns{
 typedef _btns btns;
 
 btns btn[4];
+
+
+void setTFTbrightness(uint8_t duty) { // duty 0...100 (min...max)
+    uint8_t d = round((double)duty * 2.55); // #186
+    ledcWrite(TFT_BL, d);
+}
 
 //**************************************************************************************************
 //                                              G U I                                              *
@@ -124,7 +131,6 @@ void setup() {
     btn[3].x=400; btn[3].y=250; btn[3].w=60; btn[3].h=60; btn[3].a=VOLUME_DOWN;  btn[3].s=RELEASED;
     max_stations= sizeof(stations)/sizeof(stations[0]); log_i("max stations %i", max_stations);
     Serial.begin(115200);
-    SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
     pref.begin("WebRadio", false);  // instance of preferences for defaults (station, volume ...)
     if(pref.getShort("volume", 1000) == 1000){ // if that: pref was never been initialized
         pref.putShort("volume", 10);
@@ -141,7 +147,9 @@ void setup() {
         Serial.print(".");
     }
     log_i("Connect to %s", WiFi.SSID().c_str());
-    tft.begin(TFT_CS, TFT_DC, SPI_MOSI, SPI_MISO, SPI_SCK);
+    ledcAttach(TFT_BL, 1200, 8); // 1200 Hz PWM and 8 bit resolution
+    setTFTbrightness(100);
+    tft.begin(TFT_CS, TFT_DC, VSPI, SPI_MOSI, SPI_MISO, SPI_SCK);
     tft.setRotation(3);
     tp.setRotation(3);
     tft.setFont(Times_New_Roman43x35);
@@ -156,8 +164,8 @@ void setup() {
 //**************************************************************************************************
 //                                            L O O P                                              *
 //**************************************************************************************************
-void loop()
-{
+void loop(){
+    vTaskDelay(1);
     audio.loop();
     tp.loop();
 }

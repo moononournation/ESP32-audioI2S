@@ -14,8 +14,8 @@ using namespace std;
 #define I2S_LRC       26
 
 
-char SSID[] = "Wolles-FRITZBOX";
-char PASS[] = "40441061073895958449";
+char SSID[] = "xxxxx";
+char PASS[] = "xxxxx";
 
 
 
@@ -142,6 +142,7 @@ void setup() {
 //                                      L O O P
 //----------------------------------------------------------------------------------------------------------------------
 void loop() {
+    vTaskDelay(1);
     if(webSrv.loop()) return; // if true: ignore all other for faster response to web
     audio.loop();
 }

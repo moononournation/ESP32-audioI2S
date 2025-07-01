@@ -1,9 +1,12 @@
 # ESP32-audioI2S
+
+:warning: **This library only works on multi-core chips like ESP32, ESP32-S3 and ESP32-P4. Your board must have PSRAM! It does not work on the ESP32-S2, ESP32-C3 etc** :warning:
+
 Plays mp3, m4a and wav files from SD card via I2S with external hardware.
-HELIX-mp3 and -aac decoder is included. There is also an OPUS decoder for Fullband, n VORBIS decoder and a FLAC decoder.
-Works with MAX98357A (3 Watt amplifier with DAC), connected three lines (DOUT, BLCK, LRC) to I2S.
+HELIX-mp3 and faad2-aac decoder is included. There is also an OPUS decoder for Fullband, an VORBIS decoder and a FLAC decoder.
+Works with MAX98357A (3 Watt amplifier with DAC), connected three lines (DOUT, BLCK, LRC) to I2S. The I2S output frequency is always 48kHz, regardless of the input source, so Bluetooth devices can also be connected without any problems.
 For stereo are two MAX98357A necessary. AudioI2S works with UDA1334A (Adafruit I2S Stereo Decoder Breakout Board), PCM5102A and CS4344.
-Other HW may work but not tested. Plays also icy-streams and GoogleTTS. Can be compiled with Arduino IDE. [WIKI](https://github.com/schreibfaul1/ESP32-audioI2S/wiki)
+Other HW may work but not tested. Plays also icy-streams, GoogleTTS and OpenAIspeech. Can be compiled with Arduino IDE. [WIKI](https://github.com/schreibfaul1/ESP32-audioI2S/wiki)
 
 ```` c++
 #include "Arduino.h"
@@ -39,7 +42,7 @@ void setup() {
     audio.setVolume(21); // default 0...21
 //  or alternative
 //  audio.setVolumeSteps(64); // max 255
-//  audio.setVolume(63);    
+//  audio.setVolume(63);
 //
 //  *** radio streams ***
     audio.connecttohost("http://stream.antennethueringen.de/live/aac-64/stream.antennethueringen.de/"); // aac
@@ -68,9 +71,9 @@ void setup() {
 //  audio.connecttospeech("Wenn die Hunde schlafen, kann der Wolf gut Schafe stehlen.", "de"); // Google TTS
 }
 
-void loop()
-{
+void loop(){
     audio.loop();
+    vTaskDelay(1);
 }
 
 // optional
@@ -106,9 +109,76 @@ void audio_eof_speech(const char *info){
 }
 
 ````
-Breadboard
-![Breadboard](https://github.com/schreibfaul1/ESP32-audioI2S/blob/master/additional_info/Breadboard.jpg)
+
+````c++
+/* ESP32-S3, ESP32-P4 EXAMPLE */
+
+#include "Arduino.h"
+#include "Audio.h"
+#include "WiFi.h"
+#include "SD_MMC.h"
+
+#define I2S_DOUT            9
+#define I2S_BCLK            3
+#define I2S_LRC             1
+#define SD_MMC_D0          11
+#define SD_MMC_CLK         13
+#define SD_MMC_CMD         14
+
+Audio audio;
+
+String ssid =     "*****";
+String password = "*****";
+
+void setup() {
+    Serial.begin(115200);
+//    WiFi.begin(ssid.c_str(), password.c_str());
+//    while (WiFi.status() != WL_CONNECTED) delay(1500);
+
+    pinMode(SD_MMC_D0, INPUT_PULLUP);
+    SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
+    SD_MMC.begin("/sdcard", true);
+
+    audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+    audio.setVolume(12); // default 0...21
+//   audio.connecttohost("http://stream.antennethueringen.de/live/aac-64/stream.antennethueringen.de/"); // aac
+    audio.connecttoFS(SD_MMC, "/test.wav");
+}
+
+void loop() {
+    audio.loop();
+    vTaskDelay(1);
+}
+
+// optional
+void audio_info(const char *info){
+    Serial.print("info        "); Serial.println(info);
+}
+````
+
+<br>
+
+|Codec       | ESP32       |ESP32-S3 or ESP32-P4         |                          |
+|------------|-------------|-----------------------------|--------------------------|
+| mp3        | y           | y                           |                          |
+| aac        | y           | y                           |                          |
+| aacp       | y (mono)    | y (+SBR, +Parametric Stereo)|                          |
+| wav        | y           | y                           |                          |
+| flac       | y           | y                           |blocksize max 24576 bytes |
+| vorbis     | y           | y                           | <=196Kbit/s              |
+| m4a        | y           | y                           |                          |
+| opus       | y           | y                           |hybrid mode not impl yet  |
+
+<br>
+
+***
 Wiring
-![Wiring](https://github.com/schreibfaul1/ESP32-audioI2S/blob/master/additional_info/ESP32_I2S_PCM5102A.JPG)
+![Wiring ESP32-S3](https://github.com/user-attachments/assets/15dd1766-0fc1-4079-b378-bc566583e80d)
+***
 Impulse diagram
 ![Impulse diagram](https://github.com/schreibfaul1/ESP32-audioI2S/blob/master/additional_info/Impulsdiagramm.jpg)
+***
+Yellobyte has developed an all-in-one board. It includes an ESP32-S3 N8R2, 2x MAX98357 and an SD card adapter.
+Documentation, circuit diagrams and examples can be found here: https://github.com/yellobyte/ESP32-DevBoards-Getting-Started
+![image](https://github.com/user-attachments/assets/4002d09e-8e76-4e08-9265-188fed7628d3)
+
