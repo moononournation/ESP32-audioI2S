@@ -413,6 +413,7 @@ public:
     int getCodec() {return m_codec;}
     const char *getCodecname() {return codecname[m_codec];}
     const char *getVersion() {return audioI2SVers;}
+    void unicode2utf8(char* buff, uint32_t len);
 
 private:
     // ------- PRIVATE MEMBERS ----------------------------------------

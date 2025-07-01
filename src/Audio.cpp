@@ -1110,6 +1110,68 @@ void Audio::showID3Tag(const char* tag, const char* value) {
         if(audio_id3data) audio_id3data(id3tag.get());
     }
 }
+//---------------------------------------------------------------------------------------------------------------------
+void Audio::unicode2utf8(char* buff, uint32_t len){
+    // converts unicode in UTF-8, buff contains the string to be converted up to len
+    // range U+1 ... U+FFFF
+    uint8_t* tmpbuff = (uint8_t*)malloc(len * 2);
+    if(!tmpbuff) {log_e("out of memory"); return;}
+    bool bitorder = false;
+    uint16_t j = 0;
+    uint16_t k = 0;
+    uint16_t m = 0;
+    uint8_t uni_h = 0;
+    uint8_t uni_l = 0;
+
+    while(m < len - 1) {
+        if((buff[m] == 0xFE) && (buff[m + 1] == 0xFF)) {
+            bitorder = true;
+            j = m + 2;
+        }  // LSB/MSB
+        if((buff[m] == 0xFF) && (buff[m + 1] == 0xFE)) {
+            bitorder = false;
+            j = m + 2;
+        }  // MSB/LSB
+        m++;
+    } // seek for last bitorder
+    m = 0;
+    if(j > 0) {
+        for(k = j; k < len; k += 2) {
+            if(bitorder == true) {
+                uni_h = (uint8_t)buff[k];
+                uni_l = (uint8_t)buff[k + 1];
+            }
+            else {
+                uni_l = (uint8_t)buff[k];
+                uni_h = (uint8_t)buff[k + 1];
+            }
+
+            uint16_t uni_hl = ((uni_h << 8) | uni_l);
+
+            if (uni_hl < 0X80){
+                tmpbuff[m] = uni_l;
+                m++;
+            }
+            else if (uni_hl < 0X800) {
+                tmpbuff[m]= ((uni_hl >> 6) | 0XC0);
+                m++;
+                tmpbuff[m] =((uni_hl & 0X3F) | 0X80);
+                m++;
+            }
+            else {
+                tmpbuff[m] = ((uni_hl >> 12) | 0XE0);
+                m++;
+                tmpbuff[m] = (((uni_hl >> 6) & 0X3F) | 0X80);
+                m++;
+                tmpbuff[m] = ((uni_hl & 0X3F) | 0X80);
+                m++;
+            }
+        }
+    }
+    memcpy(buff, tmpbuff, m);
+    buff[m] = 0;
+    if(tmpbuff){free(tmpbuff); tmpbuff = NULL;}
+}
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void Audio::latinToUTF8(ps_ptr<char>& buff, bool UTF8check) {
     // most stations send  strings in UTF-8 but a few sends in latin. To standardize this, all latin strings are
